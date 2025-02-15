@@ -1,0 +1,197 @@
+package az.taskmanagementsystem.service;
+
+import az.taskmanagementsystem.dto.AuthenticationResponse;
+import az.taskmanagementsystem.dto.LoginRequest;
+import az.taskmanagementsystem.dto.RegisterRequest;
+import az.taskmanagementsystem.dto.ResetPasswordRequest;
+import az.taskmanagementsystem.entity.UUIDToken;
+import az.taskmanagementsystem.entity.User;
+import az.taskmanagementsystem.exception.InvalidTokenException;
+import az.taskmanagementsystem.exception.TokenNotFoundException;
+import az.taskmanagementsystem.exception.UserAlreadyExistException;
+import az.taskmanagementsystem.exception.UserNotFoundException;
+import az.taskmanagementsystem.mapper.UserMapper;
+import az.taskmanagementsystem.repository.UUIDTokenRepository;
+import az.taskmanagementsystem.repository.UserRepository;
+import az.taskmanagementsystem.security.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class AuthenticationService {
+
+    private final EmailService emailService;
+
+    private final JwtService jwtService;
+
+    private final UUIDTokenRepository UUIDTokenRepository;
+
+    private final AuthenticationManager authenticationManager;
+
+    private final PasswordEncoder passwordEncoder;
+
+    private final UserMapper userMapper;
+
+    private final UserRepository userRepository;
+
+    public void register(RegisterRequest request) {
+
+        var userEntityOpt = userRepository.findByEmail(request.getEmail());
+
+        if (userEntityOpt.isEmpty() || (!userEntityOpt.get().isEnabled() && userEntityOpt.get().getUuidToken() == null)) {
+            var user = userMapper.dtoToEntity(request);
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            var uuidTokenEntity = generateUUIDToken(user);
+            user.setUuidToken(uuidTokenEntity);
+            userRepository.save(user);
+            emailService.sendRegistrationLink(user, uuidTokenEntity.getToken());
+            return;
+        }
+
+        var user = userEntityOpt.get();
+
+        if (user.isEnabled()) {
+            throw new UserAlreadyExistException();
+        }
+
+        userMapper.updateUserEntity(request, user);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        var uuidToken = generateUUIDToken(user);
+        user.setUuidToken(uuidToken);
+        userRepository.save(user);
+        emailService.sendRegistrationLink(user, uuidToken.getToken());
+    }
+
+    public void verifyRegistration(String token) {
+
+        UUIDToken uuidToken = UUIDTokenRepository.findByToken(token)
+                .orElseThrow(TokenNotFoundException::new);
+
+        if (uuidToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new InvalidTokenException();
+        }
+        var user = uuidToken.getUser();
+        user.setEnabled(true);
+        userRepository.save(user);
+        UUIDTokenRepository.delete(uuidToken);
+    }
+
+    public AuthenticationResponse login(LoginRequest request) {
+
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
+
+        User user = (User) authentication.getPrincipal();
+
+        var accessToken = jwtService.generateAccessToken(user);
+        var refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    public void forgotPassword(String email) {
+
+        var user = userRepository.findByEmail(email).orElseThrow(
+                UserNotFoundException::new);
+
+        var uuidTokenEntity = generateUUIDToken(user);
+
+        UUIDTokenRepository.save(uuidTokenEntity);
+        emailService.sendForgotPasswordLink(user, uuidTokenEntity.getToken());
+    }
+
+    public void updatePassword(String token, String newPassword) {
+
+        UUIDToken uuidToken = UUIDTokenRepository.findByToken(token)
+                .orElseThrow(InvalidTokenException::new);
+
+        if (uuidToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new InvalidTokenException();
+        }
+
+        var user = uuidToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    public AuthenticationResponse getNewAccessToken(HttpServletRequest request) {
+        final String authHeader = request.getHeader(AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new InvalidTokenException();
+        }
+
+        String refreshToken = authHeader.substring(7);
+        String email = jwtService.extractEmail(refreshToken);
+        String tokenType = jwtService.extractTokenType(refreshToken);
+
+        var userDetails = userRepository.findByEmail(email)
+                .orElseThrow(UserNotFoundException::new);
+
+        if (!"REFRESH".equals(tokenType) || !jwtService.isTokenValid(refreshToken, userDetails)) {
+            throw new InvalidTokenException();
+        }
+
+        String accessToken = jwtService.generateAccessToken(userDetails);
+        return AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+
+        var user = getLoggedInUser();
+        var newPassword = passwordEncoder.encode(request.getNewPassword());
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())){
+            throw new BadCredentialsException("Wrong password!");
+        }
+        user.setPassword(newPassword);
+        userRepository.save(user);
+    }
+
+    private UUIDToken generateUUIDToken(User user) {
+        String token = UUID.randomUUID().toString();
+        return UUIDToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(10))
+                .build();
+    }
+
+    private User getLoggedInUser(){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new IllegalStateException("User is not authenticated");
+        }
+
+        var principal = authentication.getPrincipal();
+        if (principal instanceof User) {
+            return (User) principal;
+        } else {
+            throw new IllegalStateException("Authenticated principal is not of type User");
+        }
+    }
+}
