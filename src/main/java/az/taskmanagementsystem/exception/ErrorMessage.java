@@ -19,7 +19,9 @@ public enum ErrorMessage {
 
     INVALID_AUTHENTICATION_CREDENTIALS("Invalid authentication credentials"),
 
-    USER_ALREADY_EXIST("User already exists");
+    USER_ALREADY_EXIST("User already exists"),
+
+    INVALID_ROLE_TYPE("Role type mismatch exception");
 
     private final String message;
 

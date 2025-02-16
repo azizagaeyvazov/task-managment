@@ -7,7 +7,6 @@ import az.taskmanagementsystem.dto.ResetPasswordRequest;
 import az.taskmanagementsystem.entity.UUIDToken;
 import az.taskmanagementsystem.entity.User;
 import az.taskmanagementsystem.exception.InvalidTokenException;
-import az.taskmanagementsystem.exception.TokenNotFoundException;
 import az.taskmanagementsystem.exception.UserAlreadyExistException;
 import az.taskmanagementsystem.exception.UserNotFoundException;
 import az.taskmanagementsystem.mapper.UserMapper;
@@ -79,16 +78,14 @@ public class AuthenticationService {
 
     public void verifyRegistration(String token) {
 
-        UUIDToken uuidToken = UUIDTokenRepository.findByToken(token)
-                .orElseThrow(TokenNotFoundException::new);
+        var uuidToken = UUIDTokenRepository.findByToken(token);
 
-        if (uuidToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if (uuidToken.isEmpty() || uuidToken.get().getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new InvalidTokenException();
         }
-        var user = uuidToken.getUser();
+        var user = uuidToken.get().getUser();
         user.setEnabled(true);
         userRepository.save(user);
-        UUIDTokenRepository.delete(uuidToken);
     }
 
     public AuthenticationResponse login(LoginRequest request) {
@@ -99,12 +96,9 @@ public class AuthenticationService {
                         request.getPassword()
                 )
         );
-
         User user = (User) authentication.getPrincipal();
-
         var accessToken = jwtService.generateAccessToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
-
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -117,21 +111,18 @@ public class AuthenticationService {
                 UserNotFoundException::new);
 
         var uuidTokenEntity = generateUUIDToken(user);
-
         UUIDTokenRepository.save(uuidTokenEntity);
         emailService.sendForgotPasswordLink(user, uuidTokenEntity.getToken());
     }
 
     public void updatePassword(String token, String newPassword) {
 
-        UUIDToken uuidToken = UUIDTokenRepository.findByToken(token)
-                .orElseThrow(InvalidTokenException::new);
+        var uuidToken = UUIDTokenRepository.findByToken(token);
 
-        if (uuidToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if (uuidToken.isEmpty() || uuidToken.get().getExpiryDate().isBefore(LocalDateTime.now()))
             throw new InvalidTokenException();
-        }
 
-        var user = uuidToken.getUser();
+        var user = uuidToken.get().getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
@@ -141,7 +132,6 @@ public class AuthenticationService {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new InvalidTokenException();
         }
-
         String refreshToken = authHeader.substring(7);
         String email = jwtService.extractEmail(refreshToken);
         String tokenType = jwtService.extractTokenType(refreshToken);
@@ -152,7 +142,6 @@ public class AuthenticationService {
         if (!"REFRESH".equals(tokenType) || !jwtService.isTokenValid(refreshToken, userDetails)) {
             throw new InvalidTokenException();
         }
-
         String accessToken = jwtService.generateAccessToken(userDetails);
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
@@ -164,7 +153,7 @@ public class AuthenticationService {
 
         var user = getLoggedInUser();
         var newPassword = passwordEncoder.encode(request.getNewPassword());
-        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())){
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new BadCredentialsException("Wrong password!");
         }
         user.setPassword(newPassword);
@@ -180,13 +169,12 @@ public class AuthenticationService {
                 .build();
     }
 
-    private User getLoggedInUser(){
+    private User getLoggedInUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new IllegalStateException("User is not authenticated");
         }
-
         var principal = authentication.getPrincipal();
         if (principal instanceof User) {
             return (User) principal;
