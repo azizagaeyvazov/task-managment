@@ -15,15 +15,8 @@ public interface UUIDTokenRepository extends JpaRepository<UUIDToken, Long> {
 
     Optional<UUIDToken> findByToken(String token);
 
-//    Optional<UUIDToken> findByUserId(Long userId);
-
     @Modifying
     @Transactional
-    @Query(value = "delete from uuidtoken where user_id = :userId", nativeQuery = true)
-    void deleteUUIDTokenByUserId(@Param("userId") Long userId);
-
-    @Modifying
-    @Transactional
-    @Query(value = "DELETE FROM uuidtoken WHERE user_id = :userId AND expiry_date < NOW()", nativeQuery = true)
-    void deleteExpiredUUIDTokenByUserId(@Param("userId") Long userId);   // find use case
+    @Query(value = "DELETE FROM uuidtoken WHERE expiry_date < NOW()", nativeQuery = true)
+    void deleteExpiredUUIDToken();
 }

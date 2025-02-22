@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static az.taskmanagementsystem.exception.ErrorMessage.INVALID_AUTHENTICATION_CREDENTIALS;
+import static az.taskmanagementsystem.exception.ErrorMessage.UNAUTHORIZED_ACCESS;
 import static org.springframework.http.HttpStatus.*;
 
 @Slf4j
@@ -29,9 +30,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ApiErrorResponse> handleNotFoundException(UserNotFoundException ex, HttpServletRequest request) {
-        log.error("User not found: {}", ex.getMessage());
+    @ExceptionHandler({UserNotFoundException.class, TaskNotFoundException.class})
+    public ResponseEntity<ApiErrorResponse> handleNotFoundException(Exception ex, HttpServletRequest request) {
+        log.error("Not found: {}", ex.getMessage());
         return buildErrorResponse(ex.getMessage(), NOT_FOUND, request);
     }
 
@@ -47,7 +48,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), UNAUTHORIZED, request);
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
+    @ExceptionHandler(BadCredentialsException.class) //?
     public ResponseEntity<ApiErrorResponse> handleBadCredentialsException(BadCredentialsException ex, HttpServletRequest request) {
         log.error("Invalid Authentication Credentials: {}", ex.getMessage());
         return buildErrorResponse(INVALID_AUTHENTICATION_CREDENTIALS.getMessage(), UNAUTHORIZED, request);
@@ -57,6 +58,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRoleTypeMismatchException(InvalidRoleTypeException ex, HttpServletRequest request) {
         log.error("Invalid enum value provided: {}", ex.getMessage());
         return buildErrorResponse("Invalid role. Allowed values: ADMIN, MANAGER, EMPLOYEE", BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthorizedAccessException(UnauthorizedAccessException ex, HttpServletRequest request) {
+        log.error("Access denied: {}", ex.getMessage());
+        return buildErrorResponse(UNAUTHORIZED_ACCESS.getMessage(), UNAUTHORIZED, request);
     }
 
     @ExceptionHandler(RuntimeException.class)

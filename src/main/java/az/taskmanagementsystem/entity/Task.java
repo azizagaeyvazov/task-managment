@@ -25,7 +25,7 @@ public class Task {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private Status status;
+    private Status status = Status.PENDING;
 
     @Enumerated(EnumType.STRING)
     private Priority priority;
@@ -39,7 +39,7 @@ public class Task {
     private User createdBy;
 
     @ManyToOne
-    @JoinColumn
+    @JoinColumn(name = "assigned_user_id")
     private User assignedUser;
 
     @CreationTimestamp

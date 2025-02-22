@@ -66,8 +66,6 @@ public class AuthenticationController {
         tokenBlacklistService.blacklistToken(request);
         return ResponseEntity.ok().build();
     }
-
-
 }
 
 

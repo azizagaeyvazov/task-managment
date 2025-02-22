@@ -3,6 +3,7 @@ package az.taskmanagementsystem.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -38,7 +39,12 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests((authorizeHttpRequests) ->
                         authorizeHttpRequests
                                 .requestMatchers(WHITE_LIST).permitAll()
-                                .anyRequest().authenticated())
+                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks").hasRole("MANAGER")
+                                .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks").hasRole("MANAGER")
+                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks/assign-task").hasRole("MANAGER")
+                                .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks/{taskId}/status").hasRole("EMPLOYEE")
+                                .requestMatchers(WHITE_LIST).permitAll()
+                                .anyRequest().hasRole("ADMIN"))
                 .sessionManagement((sessionManagement) ->
                         sessionManagement
                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

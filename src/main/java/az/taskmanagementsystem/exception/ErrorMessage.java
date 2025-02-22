@@ -7,13 +7,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum ErrorMessage {
 
-    USER_NOT_FOUND("User Not Found"),
+    USER_NOT_FOUND("User not found"),
 
-    GENRE_NOT_FOUND("Genre not found"),
-
-    MOVIE_NOT_FOUND("Movie not found"),
-
-    TOKEN_NOT_FOUND("Token not found"),
+    TASK_NOT_FOUND("Task not found"),
 
     INVALID_TOKEN("Token is invalid"),
 
@@ -21,7 +17,9 @@ public enum ErrorMessage {
 
     USER_ALREADY_EXIST("User already exists"),
 
-    INVALID_ROLE_TYPE("Role type mismatch exception");
+    INVALID_ROLE_TYPE("Role type mismatches"),
+
+    UNAUTHORIZED_ACCESS("Access denied");
 
     private final String message;
 

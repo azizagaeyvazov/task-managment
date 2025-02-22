@@ -46,10 +46,10 @@ public class User implements UserDetails {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "createdBy")
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
     private List<Task> createdTasks;
 
-    @OneToMany(mappedBy = "assignedUser")
+    @OneToMany(mappedBy = "assignedUser", cascade = CascadeType.ALL)
     private List<Task> assignedTasks;
 
     @OneToOne(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})

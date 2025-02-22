@@ -23,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -48,10 +49,10 @@ public class AuthenticationService {
 
     private final UserRepository userRepository;
 
+    @Transactional
     public void register(RegisterRequest request) {
 
         var userEntityOpt = userRepository.findByEmail(request.getEmail());
-
         if (userEntityOpt.isEmpty() || (!userEntityOpt.get().isEnabled() && userEntityOpt.get().getUuidToken() == null)) {
             var user = userMapper.dtoToEntity(request);
             user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -61,13 +62,11 @@ public class AuthenticationService {
             emailService.sendRegistrationLink(user, uuidTokenEntity.getToken());
             return;
         }
-
         var user = userEntityOpt.get();
 
         if (user.isEnabled()) {
             throw new UserAlreadyExistException();
         }
-
         userMapper.updateUserEntity(request, user);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         var uuidToken = generateUUIDToken(user);
@@ -76,10 +75,10 @@ public class AuthenticationService {
         emailService.sendRegistrationLink(user, uuidToken.getToken());
     }
 
+    @Transactional
     public void verifyRegistration(String token) {
 
         var uuidToken = UUIDTokenRepository.findByToken(token);
-
         if (uuidToken.isEmpty() || uuidToken.get().getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new InvalidTokenException();
         }
@@ -88,6 +87,7 @@ public class AuthenticationService {
         userRepository.save(user);
     }
 
+    @Transactional
     public AuthenticationResponse login(LoginRequest request) {
 
         Authentication authentication = authenticationManager.authenticate(
@@ -105,20 +105,20 @@ public class AuthenticationService {
                 .build();
     }
 
+    @Transactional
     public void forgotPassword(String email) {
 
         var user = userRepository.findByEmail(email).orElseThrow(
                 UserNotFoundException::new);
-
         var uuidTokenEntity = generateUUIDToken(user);
         UUIDTokenRepository.save(uuidTokenEntity);
         emailService.sendForgotPasswordLink(user, uuidTokenEntity.getToken());
     }
 
+    @Transactional
     public void updatePassword(String token, String newPassword) {
 
         var uuidToken = UUIDTokenRepository.findByToken(token);
-
         if (uuidToken.isEmpty() || uuidToken.get().getExpiryDate().isBefore(LocalDateTime.now()))
             throw new InvalidTokenException();
 
@@ -127,6 +127,7 @@ public class AuthenticationService {
         userRepository.save(user);
     }
 
+    @Transactional
     public AuthenticationResponse getNewAccessToken(HttpServletRequest request) {
         final String authHeader = request.getHeader(AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -149,6 +150,7 @@ public class AuthenticationService {
                 .build();
     }
 
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
 
         var user = getLoggedInUser();

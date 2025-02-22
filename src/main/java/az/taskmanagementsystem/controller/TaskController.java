@@ -1,13 +1,16 @@
 package az.taskmanagementsystem.controller;
 
 import az.taskmanagementsystem.dto.PaginatedResponse;
-import az.taskmanagementsystem.dto.TaskRequest;
+import az.taskmanagementsystem.dto.TaskCreateRequest;
 import az.taskmanagementsystem.dto.TaskResponse;
+import az.taskmanagementsystem.dto.TaskUpdateRequest;
 import az.taskmanagementsystem.enums.Priority;
 import az.taskmanagementsystem.enums.Status;
 import az.taskmanagementsystem.service.TaskService;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -29,31 +32,36 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> addTask(@RequestBody TaskRequest request) {
-        service.add(request);
+    public ResponseEntity<Void> addTask(@RequestBody TaskCreateRequest request) {
+        service.createTask(request);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping
-    public ResponseEntity<Void> updateTask(@RequestParam Long id, @RequestBody TaskRequest request) {
-        service.update(id, request);
+    public ResponseEntity<Void> updateTask(@RequestParam Long id, @RequestBody TaskUpdateRequest request) {
+        service.updateTask(id, request);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        service.deleteById(id);
+        service.deleteTaskById(id);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/assign-task-to")
+    @PostMapping("/assign-task")
     public ResponseEntity<Void> assignTaskToEmployee(@RequestParam String email, @RequestParam Long taskId) {
         service.assignTask(email, taskId);
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/{taskId}/status")
-    public ResponseEntity<Void> updateTaskStatus(@PathVariable Long taskId, @RequestParam Status status) {
+    @PatchMapping("/{taskId}/status")
+    public ResponseEntity<Void> updateTaskStatus(@PathVariable Long taskId,
+                                                 @RequestParam
+                                                 @NotNull(message = "Status is required")
+                                                 @Pattern(regexp = "TODO|PENDING|COMPLETED",
+                                                         message = "Status must be either TODO, PENDING, or COMPLETED")
+                                                 Status status) {
         service.updateTaskStatus(taskId, status);
         return ResponseEntity.ok().build();
     }

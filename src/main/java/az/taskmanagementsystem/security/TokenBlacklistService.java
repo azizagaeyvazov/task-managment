@@ -1,5 +1,6 @@
 package az.taskmanagementsystem.security;
 
+import az.taskmanagementsystem.exception.UnauthorizedAccessException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class TokenBlacklistService {
     public void blacklistToken(HttpServletRequest request) {
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("Authorization header is incorrect");
+            throw new UnauthorizedAccessException();
         }
 
         final String jwt = authHeader.substring(7);

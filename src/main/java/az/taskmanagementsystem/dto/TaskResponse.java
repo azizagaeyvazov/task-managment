@@ -1,7 +1,9 @@
 package az.taskmanagementsystem.dto;
 
+import az.taskmanagementsystem.entity.User;
 import az.taskmanagementsystem.enums.Priority;
 import az.taskmanagementsystem.enums.Status;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,7 +27,9 @@ public class TaskResponse {
 
     private String tags;
 
-//    private User assignedUser;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private User assignedUser;
 
-//    private User createdBy;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private User createdBy;
 }

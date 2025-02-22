@@ -26,6 +26,6 @@ public class UUIDToken {
     private LocalDateTime expiryDate;
 
     @OneToOne
-    @JoinColumn(name = "user_id") // The foreign key should be here!
+    @JoinColumn(name = "user_id")
     private User user;
 }
