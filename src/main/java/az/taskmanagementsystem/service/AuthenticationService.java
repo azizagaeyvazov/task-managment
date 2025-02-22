@@ -169,7 +169,7 @@ public class AuthenticationService {
                 .build();
     }
 
-    private User getLoggedInUser() {
+    public User getLoggedInUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication.getPrincipal() == null) {

@@ -2,11 +2,13 @@ package az.taskmanagementsystem.dto;
 
 import az.taskmanagementsystem.enums.Priority;
 import az.taskmanagementsystem.enums.Status;
+import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
 @Setter
+@Getter
 public class TaskResponse {
 
     private Long id;
