@@ -1,8 +1,11 @@
 package az.taskmanagementsystem.service;
 
+import az.taskmanagementsystem.dto.ProfileUpdateRequest;
 import az.taskmanagementsystem.dto.UserResponse;
 import az.taskmanagementsystem.dto.UserUpdateRequest;
 import az.taskmanagementsystem.entity.User;
+import az.taskmanagementsystem.enums.Role;
+import az.taskmanagementsystem.exception.UnauthorizedAccessException;
 import az.taskmanagementsystem.exception.UserNotFoundException;
 import az.taskmanagementsystem.mapper.UserMapper;
 import az.taskmanagementsystem.repository.UserRepository;
@@ -35,16 +38,26 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-//    public UserResponse updateUser(UserUpdateRequest request) {
-//
-//        var user = authenticationService.getLoggedInUser();
-//        mapper.updateUserEntity(request, user);
-//        if (request.getPassword() != null) user.setPassword(passwordEncoder.encode(request.getPassword));
-//        repository.save(user);
-//        return mapper.entityToDto(user);
-//    }
+    public UserResponse updateUserByAdmin(String email, UserUpdateRequest request) {
+        var admin = authenticationService.getLoggedInUser();
+        if (!admin.getRole().equals(Role.ADMIN)) throw new UnauthorizedAccessException();
+        var user = getByEmail(email);
+        mapper.updateUser(request, user);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        repository.save(user);
+        return mapper.entityToDto(user);
+    }
+
+    public UserResponse updateProfile(ProfileUpdateRequest request){
+        var user = authenticationService.getLoggedInUser();
+        mapper.updateUserProfile(request, user);
+        repository.save(user);
+        return mapper.entityToDto(user);
+    }
 
     public void deleteUserByEmail(String email) {
+        var admin = authenticationService.getLoggedInUser();
+        if (!admin.getRole().equals(Role.ADMIN)) throw new UnauthorizedAccessException();
         var user = getByEmail(email);
         repository.delete(user);
     }

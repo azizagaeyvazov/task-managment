@@ -74,6 +74,7 @@ public class TaskService {
         if (authenticationService.getLoggedInUser().getRole().equals(Role.EMPLOYEE))
             throw new UnauthorizedAccessException();
         var task = getTaskById(id);
+        if (task.getStatus().equals(Status.PENDING)) throw new UnsupportedOperationException();
         if (request.getAssignedUserEmail() != null) {
             var assignedUser = userService.getByEmail(request.getAssignedUserEmail());
             task.setAssignedUser(assignedUser);
@@ -89,8 +90,9 @@ public class TaskService {
         var role = user.getRole();
 
         if (role.equals(Role.ADMIN)) repository.deleteById(id);
-        if (role.equals(Role.MANAGER) && task.getCreatedBy().equals(user)) repository.deleteById(id);
-        if (role.equals(Role.EMPLOYEE) && task.getAssignedUser().equals(user) && task.getStatus().equals(Status.PENDING))
+        else if (role.equals(Role.MANAGER) && task.getCreatedBy().equals(user))
+            repository.deleteById(id);
+        else if (role.equals(Role.EMPLOYEE) && task.getAssignedUser().equals(user) && task.getStatus().equals(Status.PENDING))
             repository.deleteById(id);
         throw new UnauthorizedAccessException();
     }
@@ -99,6 +101,7 @@ public class TaskService {
     public void assignTask(String email, Long taskId) {
         var task = getTaskById(taskId);
         var employee = userService.getByEmail(email);
+        if (!task.getStatus().equals(Status.PENDING)) throw new UnsupportedOperationException();
         task.setAssignedUser(employee);
         repository.save(task);
     }
@@ -127,9 +130,7 @@ public class TaskService {
         if (tags != null && !tags.isEmpty()) predicate.and(task.tags.containsIgnoreCase(tags));
 
         applyRoleBasedFilter(predicate, user);
-
         Page<Task> taskPage = repository.findAll(predicate, pageable);
-
         List<TaskResponse> tasksResponse = taskPage.getContent().stream()
                 .map(taskEntity -> mapper.mapTaskBasedOnRole(taskEntity, user.getRole()))
                 .collect(Collectors.toList());

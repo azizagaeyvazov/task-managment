@@ -7,15 +7,11 @@ import lombok.Getter;
 import java.time.LocalDate;
 
 @Getter
-public class UserUpdateRequest {
+public class ProfileUpdateRequest {
 
     private String fullName;
 
-    private String password;
-
     @Past(message = "Date of birth must be in the past")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
-    private LocalDate dateOfBirth;
-
-    private boolean isEnabled;
+    private LocalDate birthDate;
 }

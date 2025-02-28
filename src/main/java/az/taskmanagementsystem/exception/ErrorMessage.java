@@ -19,7 +19,11 @@ public enum ErrorMessage {
 
     INVALID_ROLE_TYPE("Role type mismatches"),
 
-    UNAUTHORIZED_ACCESS("Access denied");
+    UNAUTHORIZED_ACCESS("Access denied"),
+
+    UNSUPPORTED_OPERATION("The operation is not supported"),
+
+    INCORRECT_DATE_FORMAT("Date format must be as 'dd-MM-yyyy'");
 
     private final String message;
 

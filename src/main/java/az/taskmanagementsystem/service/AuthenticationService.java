@@ -53,7 +53,7 @@ public class AuthenticationService {
     public void register(RegisterRequest request) {
 
         var userEntityOpt = userRepository.findByEmail(request.getEmail());
-        User user = userEntityOpt
+        var user = userEntityOpt
                 .map(existingUser -> {
                     if (existingUser.isEnabled()) {
                         throw new UserAlreadyExistException();
