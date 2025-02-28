@@ -53,26 +53,21 @@ public class AuthenticationService {
     public void register(RegisterRequest request) {
 
         var userEntityOpt = userRepository.findByEmail(request.getEmail());
-        if (userEntityOpt.isEmpty() || (!userEntityOpt.get().isEnabled() && userEntityOpt.get().getUuidToken() == null)) {
-            var user = userMapper.dtoToEntity(request);
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            var uuidTokenEntity = generateUUIDToken(user);
-            user.setUuidToken(uuidTokenEntity);
-            userRepository.save(user);
-            emailService.sendRegistrationLink(user, uuidTokenEntity.getToken());
-            return;
-        }
-        var user = userEntityOpt.get();
+        User user = userEntityOpt
+                .map(existingUser -> {
+                    if (existingUser.isEnabled()) {
+                        throw new UserAlreadyExistException();
+                    }
+                    userMapper.updateUserRegister(request, existingUser);
+                    return existingUser;
+                })
+                .orElseGet(() -> userMapper.dtoToEntity(request));
 
-        if (user.isEnabled()) {
-            throw new UserAlreadyExistException();
-        }
-        userMapper.updateUserEntity(request, user);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        var uuidToken = generateUUIDToken(user);
-        user.setUuidToken(uuidToken);
+        var uuidTokenEntity = generateUUIDToken(user);
+        user.setUuidToken(uuidTokenEntity);
         userRepository.save(user);
-        emailService.sendRegistrationLink(user, uuidToken.getToken());
+        emailService.sendRegistrationLink(user, uuidTokenEntity.getToken());
     }
 
     @Transactional

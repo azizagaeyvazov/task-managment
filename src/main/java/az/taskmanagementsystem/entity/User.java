@@ -52,7 +52,7 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "assignedUser", cascade = CascadeType.ALL)
     private List<Task> assignedTasks;
 
-    @OneToOne(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private UUIDToken uuidToken;
 
     @Override
