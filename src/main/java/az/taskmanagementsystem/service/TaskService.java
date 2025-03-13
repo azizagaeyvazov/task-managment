@@ -13,9 +13,12 @@ import az.taskmanagementsystem.enums.Status;
 import az.taskmanagementsystem.exception.TaskNotFoundException;
 import az.taskmanagementsystem.exception.UnauthorizedAccessException;
 import az.taskmanagementsystem.mapper.TaskMapper;
+import az.taskmanagementsystem.rabbitmq.producer.EmailProducer;
 import az.taskmanagementsystem.repository.TaskRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,9 @@ public class TaskService {
 
     private final UserService userService;
 
+    private final EmailProducer emailProducer;
+
+    @Cacheable(value = "tasks")
     @Transactional(readOnly = true)
     public List<TaskResponse> getAll() {
         var user = authenticationService.getLoggedInUser();
@@ -57,6 +63,7 @@ public class TaskService {
         throw new UnauthorizedAccessException();
     }
 
+    @CacheEvict(value = "tasks", allEntries = true)
     @Transactional
     public void createTask(TaskCreateRequest request) {
         var task = mapper.dtoToEntity(request);
@@ -67,6 +74,9 @@ public class TaskService {
         }
         task.setCreatedBy(manager);
         repository.save(task);
+        System.out.println("The task is created");
+        emailProducer.sendTaskDeadlineNotification(request.getAssignedUserEmail(), request.getTitle(), request.getDeadline());
+        System.out.println("producer is called");
     }
 
     @Transactional
@@ -119,7 +129,6 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public PaginatedResponse<TaskResponse> getFilteredTasks(String title, Status status, Priority priority, String tags, Pageable pageable) {
-
         var user = authenticationService.getLoggedInUser();
         QTask task = QTask.task;
         BooleanBuilder predicate = new BooleanBuilder();
@@ -134,7 +143,6 @@ public class TaskService {
         List<TaskResponse> tasksResponse = taskPage.getContent().stream()
                 .map(taskEntity -> mapper.mapTaskBasedOnRole(taskEntity, user.getRole()))
                 .collect(Collectors.toList());
-
         return new PaginatedResponse<>(
                 tasksResponse,
                 taskPage.getNumber(),

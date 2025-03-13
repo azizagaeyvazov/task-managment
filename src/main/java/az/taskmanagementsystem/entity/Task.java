@@ -8,7 +8,6 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -30,7 +29,7 @@ public class Task {
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
-    private LocalDate deadline;
+    private LocalDateTime deadline;
 
     private String tags;
 

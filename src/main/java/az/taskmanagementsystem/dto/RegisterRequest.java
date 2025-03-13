@@ -15,7 +15,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "email is required")
     @Email(message = "Invalid email format")
-    @Pattern(regexp = ".*\\.(com|org|net|edu|ru)$", message = "Email must end with .com, .org, .net, .edu or .ru")
+//    @Pattern(regexp = ".*\\.(com|org|net|edu|ru)$", message = "Email must end with .com, .org, .net, .edu or .ru")
     private String email;
 
     @NotBlank(message = "Password is required")

@@ -40,12 +40,12 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests((authorizeHttpRequests) ->
                         authorizeHttpRequests
                                 .requestMatchers(WHITE_LIST).permitAll()
-                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks").hasRole("MANAGER")
-                                .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks").hasRole("MANAGER")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks/assign-task").hasRole("MANAGER")
-                                .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks/{taskId}/status").hasRole("EMPLOYEE")
+                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks").hasAuthority("MANAGER")
+                                .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks").hasAuthority("MANAGER")
+                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks/assign-task").hasAuthority("MANAGER")
+                                .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks/{taskId}/status").hasAuthority("EMPLOYEE")
                                 .requestMatchers(WHITE_LIST).permitAll()
-                                .anyRequest().hasRole("ADMIN"))
+                                .anyRequest().hasAuthority("ADMIN"))
                 .sessionManagement((sessionManagement) ->
                         sessionManagement
                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -7,7 +7,6 @@ import az.taskmanagementsystem.dto.TaskUpdateRequest;
 import az.taskmanagementsystem.enums.Priority;
 import az.taskmanagementsystem.enums.Status;
 import az.taskmanagementsystem.service.TaskService;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;

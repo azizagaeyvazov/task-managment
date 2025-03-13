@@ -22,15 +22,15 @@ public class AuthenticationController {
     private final TokenBlacklistService tokenBlacklistService;
 
     @PostMapping("/registration")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest registerRequest) {
         authenticationService.register(registerRequest);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("Please check your email address to complete the registration process!");
     }
 
     @GetMapping("/verify-registration")
-    public ResponseEntity<Void> verifyRegistration(@RequestParam String token) {
+    public ResponseEntity<String> verifyRegistration(@RequestParam String token) {
         authenticationService.verifyRegistration(token);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("The registration has been completed successfully.");
     }
 
     @PostMapping("/login")
@@ -44,21 +44,21 @@ public class AuthenticationController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestParam String email) {
+    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
         authenticationService.forgotPassword(email);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("The verification link has been sent to your email. Please check your inbox to verify your account!");
     }
 
     @PutMapping("/update-password")
-    public ResponseEntity<Void> updatePassword(@RequestParam String token, @Valid @RequestBody UpdatePasswordRequest request) {
+    public ResponseEntity<String> updatePassword(@RequestParam String token, @Valid @RequestBody UpdatePasswordRequest request) {
         authenticationService.updatePassword(token, request.getNewPassword());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("The password has been updated successfully.");
     }
 
     @PatchMapping("/reset-password")
-    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authenticationService.resetPassword(request);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("The password has been updated successfully.");
     }
 
     @PostMapping("/logout")

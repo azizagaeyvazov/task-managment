@@ -10,6 +10,8 @@ import az.taskmanagementsystem.exception.InvalidTokenException;
 import az.taskmanagementsystem.exception.UserAlreadyExistException;
 import az.taskmanagementsystem.exception.UserNotFoundException;
 import az.taskmanagementsystem.mapper.UserMapper;
+import az.taskmanagementsystem.rabbitmq.consumer.EmailConsumer;
+import az.taskmanagementsystem.rabbitmq.producer.EmailProducer;
 import az.taskmanagementsystem.repository.UUIDTokenRepository;
 import az.taskmanagementsystem.repository.UserRepository;
 import az.taskmanagementsystem.security.JwtService;
@@ -35,19 +37,19 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @RequiredArgsConstructor
 public class AuthenticationService {
 
-    private final EmailService emailService;
+    private final UserMapper userMapper;
 
     private final JwtService jwtService;
+
+    private final EmailProducer emailProducer;
+
+    private final UserRepository userRepository;
+
+    private final PasswordEncoder passwordEncoder;
 
     private final UUIDTokenRepository UUIDTokenRepository;
 
     private final AuthenticationManager authenticationManager;
-
-    private final PasswordEncoder passwordEncoder;
-
-    private final UserMapper userMapper;
-
-    private final UserRepository userRepository;
 
     @Transactional
     public void register(RegisterRequest request) {
@@ -62,12 +64,11 @@ public class AuthenticationService {
                     return existingUser;
                 })
                 .orElseGet(() -> userMapper.dtoToEntity(request));
-
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         var uuidTokenEntity = generateUUIDToken(user);
         user.setUuidToken(uuidTokenEntity);
         userRepository.save(user);
-        emailService.sendRegistrationLink(user, uuidTokenEntity.getToken());
+        emailProducer.sendRegistrationVerificationEmail(user.getEmail(), uuidTokenEntity.getToken());
     }
 
     @Transactional
@@ -107,7 +108,7 @@ public class AuthenticationService {
                 UserNotFoundException::new);
         var uuidTokenEntity = generateUUIDToken(user);
         UUIDTokenRepository.save(uuidTokenEntity);
-        emailService.sendForgotPasswordLink(user, uuidTokenEntity.getToken());
+        emailProducer.sendForgotPasswordVerificationEmail(user.getEmail(), uuidTokenEntity.getToken());
     }
 
     @Transactional
@@ -167,8 +168,8 @@ public class AuthenticationService {
     }
 
     public User getLoggedInUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new IllegalStateException("User is not authenticated");
         }

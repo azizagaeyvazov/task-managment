@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex.getMessage(), UNAUTHORIZED, request);
     }
 
-    @ExceptionHandler(BadCredentialsException.class) //?
+    @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentialsException(BadCredentialsException ex, HttpServletRequest request) {
         log.error("Invalid Authentication Credentials: {}", ex.getMessage());
         return buildErrorResponse(INVALID_AUTHENTICATION_CREDENTIALS.getMessage(), UNAUTHORIZED, request);

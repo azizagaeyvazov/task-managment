@@ -29,7 +29,7 @@ public class UserController {
         return ResponseEntity.ok(service.updateUserByAdmin(email, request));
     }
 
-    @PatchMapping
+    @PatchMapping("/profile")
     public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody ProfileUpdateRequest request){
         return ResponseEntity.ok(service.updateProfile(request));
     }
@@ -39,6 +39,4 @@ public class UserController {
         service.deleteUserByEmail(email);
         return ResponseEntity.ok().build();
     }
-
-
 }
