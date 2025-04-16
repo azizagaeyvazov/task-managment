@@ -12,10 +12,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class ResetPasswordRequest {
-
-    @NotBlank(message = "Old password is required")
-    private String oldPassword;
+public class PasswordResetRequest {
 
     @NotBlank(message = "New password is required")
     @Size(min = 8, max = 20, message = "Password length must be between 8 and 20 characters")

@@ -12,13 +12,17 @@ import az.taskmanagementsystem.enums.Role;
 import az.taskmanagementsystem.enums.Status;
 import az.taskmanagementsystem.exception.TaskNotFoundException;
 import az.taskmanagementsystem.exception.UnauthorizedAccessException;
+import az.taskmanagementsystem.exception.UserNotFoundException;
 import az.taskmanagementsystem.mapper.TaskMapper;
 import az.taskmanagementsystem.rabbitmq.producer.EmailProducer;
 import az.taskmanagementsystem.repository.TaskRepository;
+import az.taskmanagementsystem.repository.UserRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +37,8 @@ public class TaskService {
 
     private final TaskRepository repository;
 
+    private final UserRepository userRepository;
+
     private final TaskMapper mapper;
 
     private final AuthenticationService authenticationService;
@@ -41,21 +47,26 @@ public class TaskService {
 
     private final EmailProducer emailProducer;
 
-    @Cacheable(value = "tasks")
+    @Cacheable(value = "taskList")
     @Transactional(readOnly = true)
     public List<TaskResponse> getAll() {
-        var user = authenticationService.getLoggedInUser();
-        var role = user.getRole();
+        System.out.println("fetches from db");
+        var authenticatedUser = authenticationService.getLoggedInUser();
+        var role = authenticatedUser.getRole();
 
         if (role.equals(Role.ADMIN)) {
             return repository.findAll().stream()
                     .map(task -> mapper.mapTaskBasedOnRole(task, role))
                     .collect(Collectors.toList());
+
         } else if (role.equals(Role.MANAGER)) {
+            var user = userRepository.findById(authenticatedUser.getId()).orElseThrow(UserNotFoundException::new);
             return user.getCreatedTasks().stream()
                     .map(task -> mapper.mapTaskBasedOnRole(task, role))
                     .collect(Collectors.toList());
+
         } else if (role.equals(Role.EMPLOYEE)) {
+            var user = userRepository.findById(authenticatedUser.getId()).orElseThrow(UserNotFoundException::new);
             return user.getAssignedTasks().stream()
                     .map(task -> mapper.mapTaskBasedOnRole(task, role))
                     .collect(Collectors.toList());
@@ -63,64 +74,75 @@ public class TaskService {
         throw new UnauthorizedAccessException();
     }
 
-    @CacheEvict(value = "tasks", allEntries = true)
     @Transactional
-    public void createTask(TaskCreateRequest request) {
-        var task = mapper.dtoToEntity(request);
-        var manager = authenticationService.getLoggedInUser();
+    @CacheEvict(value = "taskList", allEntries = true)
+    public TaskResponse createTask(TaskCreateRequest request) {
+        var user = authenticationService.getLoggedInUser();
+        var taskEntity= mapper.dtoToEntity(request);
         if (request.getAssignedUserEmail() != null) {
             var assignedUser = userService.getByEmail(request.getAssignedUserEmail());
-            task.setAssignedUser(assignedUser);
+            if (!assignedUser.isEnabled()) {
+                throw new UserNotFoundException();
+            }
+            taskEntity.setAssignedUser(assignedUser);
         }
-        task.setCreatedBy(manager);
-        repository.save(task);
-        System.out.println("The task is created");
-        emailProducer.sendTaskDeadlineNotification(request.getAssignedUserEmail(), request.getTitle(), request.getDeadline());
-        System.out.println("producer is called");
+        taskEntity.setCreatedBy(user);
+        taskEntity = repository.save(taskEntity);
+        emailProducer.sendTaskDeadlineNotification(taskEntity);
+        return mapper.entityToDto(taskEntity);
     }
 
     @Transactional
-    public void updateTask(Long id, TaskUpdateRequest request) {
-        if (authenticationService.getLoggedInUser().getRole().equals(Role.EMPLOYEE))
-            throw new UnauthorizedAccessException();
-        var task = getTaskById(id);
-        if (task.getStatus().equals(Status.PENDING)) throw new UnsupportedOperationException();
-        if (request.getAssignedUserEmail() != null) {
-            var assignedUser = userService.getByEmail(request.getAssignedUserEmail());
-            task.setAssignedUser(assignedUser);
-        }
+    @CachePut(value = "tasks", key = "#taskId") // Update cache for the modified task
+    @CacheEvict(value = "taskList", allEntries = true)
+    public TaskResponse updateTask(Long taskId, TaskUpdateRequest request) {
+        var task = getTaskById(taskId);
+        if (!task.getStatus().equals(Status.TODO)) throw new UnsupportedOperationException();
+        var user = authenticationService.getLoggedInUser();
+        if (!task.getCreatedBy().getId().equals(user.getId())) throw new TaskNotFoundException();
         mapper.updateTask(request, task);
         repository.save(task);
+        if (request.getDeadline() != null) {
+            emailProducer.sendTaskDeadlineNotification(task);
+        }
+        return mapper.entityToDto(task);
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tasks", key = "#id"),
+            @CacheEvict(value = "taskList", allEntries = true)
+    })
     public void deleteTaskById(Long id) {
         var task = getTaskById(id);
         var user = authenticationService.getLoggedInUser();
-        var role = user.getRole();
 
-        if (role.equals(Role.ADMIN)) repository.deleteById(id);
-        else if (role.equals(Role.MANAGER) && task.getCreatedBy().equals(user))
-            repository.deleteById(id);
-        else if (role.equals(Role.EMPLOYEE) && task.getAssignedUser().equals(user) && task.getStatus().equals(Status.PENDING))
-            repository.deleteById(id);
-        throw new UnauthorizedAccessException();
+        switch (user.getRole()) {
+            case MANAGER -> {
+                if (!task.getCreatedBy().equals(user)) {
+                    throw new TaskNotFoundException();
+                }
+            }
+            case EMPLOYEE -> {
+                if (!task.getAssignedUser().equals(user)) {
+                    throw new TaskNotFoundException();
+                }
+                if (!task.getStatus().equals(Status.TODO)) {
+                    throw new UnsupportedOperationException();
+                }
+            }
+        }
+        repository.deleteById(id);
     }
 
     @Transactional
-    public void assignTask(String email, Long taskId) {
-        var task = getTaskById(taskId);
-        var employee = userService.getByEmail(email);
-        if (!task.getStatus().equals(Status.PENDING)) throw new UnsupportedOperationException();
-        task.setAssignedUser(employee);
-        repository.save(task);
-    }
-
-    @Transactional
-    public void updateTaskStatus(Long taskId, Status status) {
-        var employee = authenticationService.getLoggedInUser();
-        var task = getTaskById(taskId);
-        if (!employee.getAssignedTasks().contains(task)) {
+    @CachePut(value = "tasks", key = "#id")
+    @CacheEvict(value = "taskList", allEntries = true)
+    public void updateTaskStatus(Long id, Status status) {
+        var user = authenticationService.getLoggedInUser();
+        user = userService.getByEmail(user.getEmail());
+        var task = getTaskById(id);
+        if (!user.getAssignedTasks().contains(task)) {
             throw new TaskNotFoundException();
         }
         task.setStatus(status);
@@ -140,11 +162,12 @@ public class TaskService {
 
         applyRoleBasedFilter(predicate, user);
         Page<Task> taskPage = repository.findAll(predicate, pageable);
-        List<TaskResponse> tasksResponse = taskPage.getContent().stream()
+        List<TaskResponse> taskResponses = taskPage.getContent().stream()
                 .map(taskEntity -> mapper.mapTaskBasedOnRole(taskEntity, user.getRole()))
                 .collect(Collectors.toList());
+
         return new PaginatedResponse<>(
-                tasksResponse,
+                taskResponses,
                 taskPage.getNumber(),
                 taskPage.getSize(),
                 taskPage.getTotalElements(),
@@ -153,7 +176,7 @@ public class TaskService {
         );
     }
 
-    private Task getTaskById(Long id) {
+    public Task getTaskById(Long id) {
         return repository.findById(id).orElseThrow(TaskNotFoundException::new);
     }
 

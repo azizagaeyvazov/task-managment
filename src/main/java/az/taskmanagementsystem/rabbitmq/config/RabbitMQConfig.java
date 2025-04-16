@@ -42,13 +42,13 @@ public class RabbitMQConfig {
         Map<String, Object> args = new HashMap<>();
         args.put("x-message-ttl", 86400000); // 24 hours
         args.put("x-dead-letter-exchange", "emailExchange");
-        args.put("x-dead-letter-routing-key", "reminder.notify");
+        args.put("x-dead-letter-routing-key", "task.deadline.reminder");
         return new Queue("reminderQueue", true, false, false, args);
     }
 
     @Bean
     public Binding dlqBinding() {
-        return BindingBuilder.bind(reminderDLQ()).to(emailExchange()).with("reminder.notify");
+        return BindingBuilder.bind(reminderDLQ()).to(emailExchange()).with("task.deadline.reminder");
     }
 
     @Bean
@@ -58,7 +58,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Binding forgotPasswordBinding(DirectExchange emailExchange, Queue forgotPasswordVerificationQueue) {
-        return BindingBuilder.bind(forgotPasswordVerificationQueue).to(emailExchange).with("forgot.password.verify");
+        return BindingBuilder.bind(forgotPasswordVerificationQueue).to(emailExchange).with("forgotPassword.verify");
     }
 
     @Bean

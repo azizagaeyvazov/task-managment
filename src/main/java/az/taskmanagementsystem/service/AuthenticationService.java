@@ -1,21 +1,16 @@
 package az.taskmanagementsystem.service;
 
-import az.taskmanagementsystem.dto.AuthenticationResponse;
-import az.taskmanagementsystem.dto.LoginRequest;
-import az.taskmanagementsystem.dto.RegisterRequest;
-import az.taskmanagementsystem.dto.ResetPasswordRequest;
+import az.taskmanagementsystem.dto.*;
 import az.taskmanagementsystem.entity.UUIDToken;
 import az.taskmanagementsystem.entity.User;
 import az.taskmanagementsystem.exception.InvalidTokenException;
 import az.taskmanagementsystem.exception.UserAlreadyExistException;
 import az.taskmanagementsystem.exception.UserNotFoundException;
 import az.taskmanagementsystem.mapper.UserMapper;
-import az.taskmanagementsystem.rabbitmq.consumer.EmailConsumer;
 import az.taskmanagementsystem.rabbitmq.producer.EmailProducer;
 import az.taskmanagementsystem.repository.UUIDTokenRepository;
 import az.taskmanagementsystem.repository.UserRepository;
 import az.taskmanagementsystem.security.JwtService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Service
 @Slf4j
@@ -53,7 +46,6 @@ public class AuthenticationService {
 
     @Transactional
     public void register(RegisterRequest request) {
-
         var userEntityOpt = userRepository.findByEmail(request.getEmail());
         var user = userEntityOpt
                 .map(existingUser -> {
@@ -106,13 +98,15 @@ public class AuthenticationService {
 
         var user = userRepository.findByEmail(email).orElseThrow(
                 UserNotFoundException::new);
+        if (!user.isEnabled()) throw new UserNotFoundException();
         var uuidTokenEntity = generateUUIDToken(user);
         UUIDTokenRepository.save(uuidTokenEntity);
         emailProducer.sendForgotPasswordVerificationEmail(user.getEmail(), uuidTokenEntity.getToken());
+        System.out.println("The message is sent to producer");
     }
 
     @Transactional
-    public void updatePassword(String token, String newPassword) {
+    public void resetPassword(String token, String newPassword) {
 
         var uuidToken = UUIDTokenRepository.findByToken(token);
         if (uuidToken.isEmpty() || uuidToken.get().getExpiryDate().isBefore(LocalDateTime.now()))
@@ -124,19 +118,15 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public AuthenticationResponse getNewAccessToken(HttpServletRequest request) {
-        final String authHeader = request.getHeader(AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new InvalidTokenException();
-        }
-        String refreshToken = authHeader.substring(7);
+    public AuthenticationResponse getNewAccessToken(RefreshTokenDto request) {
+        var refreshToken = request.getRefreshToken();
         String email = jwtService.extractEmail(refreshToken);
         String tokenType = jwtService.extractTokenType(refreshToken);
 
         var userDetails = userRepository.findByEmail(email)
                 .orElseThrow(UserNotFoundException::new);
 
-        if (!"REFRESH".equals(tokenType) || !jwtService.isTokenValid(refreshToken, userDetails)) {
+        if (!"REFRESH".equals(tokenType) || !jwtService.isTokenValid(refreshToken)) {
             throw new InvalidTokenException();
         }
         String accessToken = jwtService.generateAccessToken(userDetails);
@@ -147,7 +137,7 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public void resetPassword(ResetPasswordRequest request) {
+    public void updatePassword(PasswordUpdateRequest request) {
 
         var user = getLoggedInUser();
         var newPassword = passwordEncoder.encode(request.getNewPassword());
@@ -159,6 +149,7 @@ public class AuthenticationService {
     }
 
     private UUIDToken generateUUIDToken(User user) {
+        if(user.getUuidToken() != null) UUIDTokenRepository.deleteByUserId(user.getId());
         String token = UUID.randomUUID().toString();
         return UUIDToken.builder()
                 .token(token)
@@ -177,7 +168,11 @@ public class AuthenticationService {
         if (principal instanceof User) {
             return (User) principal;
         } else {
-            throw new IllegalStateException("Authenticated principal is not of type User");
+            throw new IllegalStateException("Authenticated principal is not User type");
         }
+    }
+
+    public void logoutUser(LogoutRequest request) {
+        jwtService.blacklistToken(request);
     }
 }

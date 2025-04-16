@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Optional;
 
@@ -18,5 +19,10 @@ public interface UUIDTokenRepository extends JpaRepository<UUIDToken, Long> {
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM uuidtoken WHERE expiry_date < NOW()", nativeQuery = true)
-    void deleteExpiredUUIDToken();
+    void  deleteExpiredUUIDToken();
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM uuidtoken WHERE user_id = :userId", nativeQuery = true)
+    void deleteByUserId(@RequestParam(value = "userId") Long userId);
 }

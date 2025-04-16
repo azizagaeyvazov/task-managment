@@ -19,7 +19,8 @@ public class TaskCreateRequest {
     private String description;
 
     @NotNull(message = "Priority can not be null")
-    @Pattern(regexp = "LOW|MEDIUM|HIGH", message = "Invalid priority")
+//    @Pattern(regexp = "LOW|MEDIUM|HIGH", message = "Invalid priority")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "LOW|MEDIUM|HIGH")
     private Priority priority;
 
     @NotNull(message = "Deadline cannot be null")

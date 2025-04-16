@@ -5,14 +5,13 @@ import az.taskmanagementsystem.dto.TaskResponse;
 import az.taskmanagementsystem.dto.TaskUpdateRequest;
 import az.taskmanagementsystem.entity.Task;
 import az.taskmanagementsystem.enums.Role;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface TaskMapper {
 
+    @Mapping(target = "assignedUser", expression = "java(task.getAssignedUser().getFullName())")
+    @Mapping(target = "createdBy", expression = "java(task.getCreatedBy().getFullName())")
     TaskResponse entityToDto(Task task);
 
     Task dtoToEntity(TaskCreateRequest request);

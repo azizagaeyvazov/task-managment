@@ -1,6 +1,6 @@
 package az.taskmanagementsystem.enums;
 
-public enum Role {
+public enum Role{
 
     ADMIN,
 

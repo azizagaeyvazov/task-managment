@@ -1,17 +1,17 @@
 package az.taskmanagementsystem.dto;
 
-import az.taskmanagementsystem.entity.User;
 import az.taskmanagementsystem.enums.Priority;
 import az.taskmanagementsystem.enums.Status;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Setter
 @Getter
-public class TaskResponse {
+public class TaskResponse implements Serializable {
 
     private Long id;
 
@@ -23,13 +23,13 @@ public class TaskResponse {
 
     private Priority priority;
 
-    private LocalDate deadline;
+    private LocalDateTime deadline;
 
     private String tags;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private User assignedUser;
+    private String assignedUser;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private User createdBy;
+    private String createdBy;
 }

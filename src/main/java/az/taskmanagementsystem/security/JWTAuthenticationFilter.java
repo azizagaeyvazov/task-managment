@@ -24,8 +24,6 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
 
     private final UserDetailsService userDetailsService;
 
-    private final TokenBlacklistService tokenBlacklistService;
-
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -45,15 +43,12 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         email = jwtService.extractEmail(jwt);
         tokenType = jwtService.extractTokenType(jwt);
 
-        if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
+        System.out.println("1");
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(email);
-
-            if ("ACCESS".equals(tokenType) && jwtService.isTokenValid(jwt, userDetails) ) {
+            System.out.println(userDetails.toString());
+            System.out.println("2");
+            if ("ACCESS".equals(tokenType) && jwtService.isTokenValid(jwt) ) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
@@ -63,6 +58,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
+        System.out.println("3");
         filterChain.doFilter(request, response);
     }
 }

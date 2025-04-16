@@ -27,6 +27,7 @@ public class EmailService {
         message.setSubject("Reset Password");
         message.setText("Click the following link to reset your password:\n" + fullUrl);
         javaMailSender.send(message);
+        System.out.println("The message is sent to email");
     }
 
     public void sendRegistrationLink(String email, String token) {

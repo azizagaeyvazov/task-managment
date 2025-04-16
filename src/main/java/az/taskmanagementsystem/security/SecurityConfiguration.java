@@ -29,8 +29,7 @@ public class SecurityConfiguration {
     private static final String[] WHITE_LIST = {
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/api/v1/auth/**",
-            "/api/v1/tasks/hello"
+            "/api/v1/auth/**"
     };
 
     @Bean
@@ -40,11 +39,13 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests((authorizeHttpRequests) ->
                         authorizeHttpRequests
                                 .requestMatchers(WHITE_LIST).permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/tasks").hasAnyAuthority("MANAGER", "EMPLOYEE")
+                                .requestMatchers(HttpMethod.GET, "/api/v1/tasks/search").hasAnyAuthority("MANAGER", "EMPLOYEE")
                                 .requestMatchers(HttpMethod.POST, "/api/v1/tasks").hasAuthority("MANAGER")
                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks").hasAuthority("MANAGER")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/tasks/assign-task").hasAuthority("MANAGER")
                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/tasks/{taskId}/status").hasAuthority("EMPLOYEE")
-                                .requestMatchers(WHITE_LIST).permitAll()
+                                .requestMatchers(HttpMethod.DELETE, "/api/v1/tasks/{id}").hasAnyAuthority("MANAGER", "EMPLOYEE")
+                                .requestMatchers(HttpMethod.PATCH, "/api/v1/users/profile").hasAnyAuthority("MANAGER", "EMPLOYEE")
                                 .anyRequest().hasAuthority("ADMIN"))
                 .sessionManagement((sessionManagement) ->
                         sessionManagement

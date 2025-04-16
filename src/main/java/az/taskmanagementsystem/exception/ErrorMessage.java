@@ -21,9 +21,9 @@ public enum ErrorMessage {
 
     UNAUTHORIZED_ACCESS("Access denied"),
 
-    UNSUPPORTED_OPERATION("The operation is not supported"),
+    UNSUPPORTED_OPERATION("The operation is not supported");
 
-    INCORRECT_DATE_FORMAT("Date format must be as 'dd-MM-yyyy'");
+//    INCORRECT_DATE_FORMAT("Date format must be as 'dd-MM-yyyy hh:mm:ss'");
 
     private final String message;
 

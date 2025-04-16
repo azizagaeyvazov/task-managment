@@ -2,7 +2,7 @@ package az.taskmanagementsystem.enums;
 
 public enum Status {
 
-    PENDING,
+    TODO,
 
     IN_PROGRESS,
 

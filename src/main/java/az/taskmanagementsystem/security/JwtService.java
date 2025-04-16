@@ -1,17 +1,22 @@
 package az.taskmanagementsystem.security;
 
+import az.taskmanagementsystem.dto.LogoutRequest;
+import az.taskmanagementsystem.exception.InvalidTokenException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.security.Key;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +24,7 @@ import java.util.function.Function;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
     @Value("${app.security.secretKey}")
@@ -29,6 +35,11 @@ public class JwtService {
 
     @Value("${app.security.refresh-token.expiration}")
     private long refreshTokenExpiration;
+
+    @Value("${app.security.token.blacklist-prefix}")
+    private String BLACKLIST_PREFIX;
+
+    private final StringRedisTemplate redisTemplate;
 
     public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -75,9 +86,8 @@ public class JwtService {
                 .compact();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String email = extractEmail(token);
-        return (email.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    public boolean isTokenValid(String token) {
+        return (!isTokenExpired(token) && !isTokenBlacklisted(token));
     }
 
     private boolean isTokenExpired(String token) {
@@ -99,5 +109,23 @@ public class JwtService {
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public void blacklistToken(LogoutRequest request) {
+        var accessToken = request.getAccessToken();
+        var refreshToken = request.getRefreshToken();
+
+        if (!isTokenValid(accessToken) || !isTokenValid(refreshToken)) {
+            throw new InvalidTokenException();
+        }
+        long accessTokenExpiration = Duration.between(Instant.now(), extractExpiration(accessToken).toInstant()).getSeconds();
+        long refreshTokenExpiration = Duration.between(Instant.now(), extractExpiration(refreshToken).toInstant()).getSeconds();
+
+        redisTemplate.opsForValue().set(BLACKLIST_PREFIX + accessToken, "blacklisted", Duration.ofSeconds(accessTokenExpiration));
+        redisTemplate.opsForValue().set(BLACKLIST_PREFIX + refreshToken, "blacklisted", Duration.ofSeconds(refreshTokenExpiration));
+    }
+
+    public boolean isTokenBlacklisted(String token) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
     }
 }
