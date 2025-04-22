@@ -1,0 +1,61 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-tasks-table
+      author: Aziz
+      changes:
+        - createTable:
+            tableName: task
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+              - column:
+                  name: description
+                  type: VARCHAR(1000)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+              - column:
+                  name: priority
+                  type: VARCHAR(20)
+              - column:
+                  name: deadline
+                  type: TIMESTAMP
+              - column:
+                  name: tags
+                  type: VARCHAR(255)
+              - column:
+                  name: created_by_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assigned_user_id
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+        - addForeignKeyConstraint:
+            baseTableName: task
+            baseColumnNames: created_by_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_task_created_by
+
+        - addForeignKeyConstraint:
+            baseTableName: task
+            baseColumnNames: assigned_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_task_assigned_user

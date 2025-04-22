@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/create-users-table.yaml
+
+  - include:
+      file: db/changelog/create-task-table.yaml
+
+  - include:
+      file: db/changelog/create-uuid_token-table.yaml
